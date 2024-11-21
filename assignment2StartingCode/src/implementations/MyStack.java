@@ -81,11 +81,4 @@ public class MyStack<T> implements StackADT<T> {
         return arrayList.size();
     }
 
-    /**
-     * Removes all elements from this stack.
-     */
-    @Override
-    public void clear() {
-        arrayList.clear();
-    }
 }

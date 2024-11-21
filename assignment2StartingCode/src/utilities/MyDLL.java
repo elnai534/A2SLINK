@@ -153,7 +153,7 @@ public class MyDLL<E> implements ListADT<E> {
 	@Override
 	public boolean contains(E toFind) throws NullPointerException {
 		if (toFind == null) {
-			throw new NullPointerException("Cannot search for null elements!")
+			throw new NullPointerException("Cannot search for null elements!");
 		}
 		
 		MyDLLNode<E> current = head;
