@@ -1,5 +1,7 @@
 package implementations;
 
+import utilities.MyArrayList;
+import utilities.StackADT;
 import java.util.NoSuchElementException;
 
 /**
@@ -8,7 +10,6 @@ import java.util.NoSuchElementException;
  * @param <T> the type of elements held in this stack
  */
 public class MyStack<T> implements StackADT<T> {
-
     private MyArrayList<T> arrayList;
 
     /**
@@ -22,6 +23,7 @@ public class MyStack<T> implements StackADT<T> {
      * Pushes an item onto the top of this stack.
      * 
      * @param element the item to be pushed onto this stack
+     * @throws NullPointerException if the element is null
      */
     @Override
     public void push(T element) {
@@ -32,8 +34,7 @@ public class MyStack<T> implements StackADT<T> {
     }
 
     /**
-     * Removes the object at the top of this stack and returns that object as the value
-     * of this function.
+     * Removes the object at the top of this stack and returns that object as the value.
      * 
      * @return the object at the top of this stack
      * @throws NoSuchElementException if the stack is empty
@@ -47,7 +48,7 @@ public class MyStack<T> implements StackADT<T> {
     }
 
     /**
-     * Looks at the object at the top of this stack without removing it from the stack.
+     * Looks at the object at the top of this stack without removing it.
      * 
      * @return the object at the top of this stack
      * @throws NoSuchElementException if the stack is empty
@@ -63,7 +64,7 @@ public class MyStack<T> implements StackADT<T> {
     /**
      * Tests if this stack is empty.
      * 
-     * @return true if and only if this stack contains no items; false otherwise
+     * @return true if this stack is empty, false otherwise
      */
     @Override
     public boolean isEmpty() {
@@ -81,8 +82,7 @@ public class MyStack<T> implements StackADT<T> {
     }
 
     /**
-     * Removes all of the elements from this stack. The stack will be empty after this
-     * call returns.
+     * Removes all elements from this stack.
      */
     @Override
     public void clear() {
