@@ -45,15 +45,20 @@ public class Parser {
     public static void parseXML(String xmlDocument) {
         MyStack<String> tagStack = new MyStack<>();
         MyArrayList<String> errors = new MyArrayList<>();
-        MyArrayList<Integer> lineNumbers = new MyArrayList<>();
         String[] lines = splitByLines(xmlDocument);
         boolean foundRootTag = false;
 
         for (int lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-            String line = lines[lineNumber].trim();
-            if (line.isEmpty()) continue;
+            String line = lines[lineNumber];
 
+            // Skip null, empty lines, or processing instructions
+            if (line == null || line.trim().isEmpty() || (line.startsWith("<?") && line.endsWith("?>"))) {
+                continue;
+            }
+
+            line = line.trim();
             int index = 0;
+
             while (index < line.length()) {
                 int openTagStart = line.indexOf('<', index);
                 if (openTagStart == -1) break;
@@ -61,28 +66,42 @@ public class Parser {
                 int openTagEnd = line.indexOf('>', openTagStart);
                 if (openTagEnd == -1) {
                     errors.add("Malformed tag - missing '>' at line " + (lineNumber + 1));
-                    lineNumbers.add(lineNumber + 1);
                     break;
                 }
 
-                String tagContent = line.substring(openTagStart + 1, openTagEnd);
+                String tagContent = line.substring(openTagStart + 1, openTagEnd).trim();
                 index = openTagEnd + 1;
 
-                if (tagContent.startsWith("/")) {
-                    String tagName = tagContent.substring(1);
+                // Ignore processing instructions and comments
+                if (tagContent.startsWith("?") || tagContent.startsWith("!--")) {
+                    continue;
+                }
+
+                if (tagContent.startsWith("/")) { // Closing tag
+                    String closingTagName = tagContent.substring(1).split(" ")[0];
+
                     if (tagStack.isEmpty()) {
-                        errors.add("Unmatched closing tag </" + tagName + "> at line " + (lineNumber + 1));
+                        errors.add("Unmatched closing tag </" + closingTagName + "> at line " + (lineNumber + 1));
                     } else {
                         String topTag = tagStack.pop();
-                        if (!topTag.equals(tagName)) {
-                            errors.add("Mismatched closing tag </" + tagName + ">, expected </" + topTag + ">");
+
+                        // Check for mismatched tags
+                        if (!topTag.equals(closingTagName)) {
+                            errors.add("Mismatched closing tag </" + closingTagName + "> at line " + (lineNumber + 1)
+                                    + ", expected </" + topTag + ">");
+                            tagStack.push(topTag); // Push back the mismatched tag for further checks
                         }
                     }
-                } else if (tagContent.endsWith("/")) {
+                } else if (tagContent.endsWith("/")) { // Self-closing tag
                     continue;
-                } else {
-                    if (!foundRootTag) foundRootTag = true;
-                    tagStack.push(tagContent);
+                } else { // Opening tag
+                    String openingTagName = tagContent.split(" ")[0];
+
+                    if (!foundRootTag) {
+                        foundRootTag = true;
+                    }
+
+                    tagStack.push(openingTagName);
                 }
             }
         }
@@ -100,23 +119,36 @@ public class Parser {
             System.out.println("XML is well-formed.");
         } else {
             System.out.println("Errors found in the XML document:");
-            for (String error : errors) {
+            Iterator<String> iterator = errors.iterator();
+            while (iterator.hasNext()) {
+                String error = iterator.next();
                 System.out.println(error);
             }
         }
     }
 
+
+
     private static String[] splitByLines(String document) {
         MyArrayList<String> lines = new MyArrayList<>();
         int lastIndex = 0;
+
         for (int i = 0; i < document.length(); i++) {
             if (document.charAt(i) == '\n') {
-                lines.add(document.substring(lastIndex, i));
+                String line = document.substring(lastIndex, i).trim();
+                if (!line.isEmpty()) { // Add only non-empty lines
+                    lines.add(line);
+                }
                 lastIndex = i + 1;
             }
         }
+
+        // Add the last line if it's non-empty
         if (lastIndex < document.length()) {
-            lines.add(document.substring(lastIndex));
+            String lastLine = document.substring(lastIndex).trim();
+            if (!lastLine.isEmpty()) {
+                lines.add(lastLine);
+            }
         }
 
         String[] lineArray = new String[lines.size()];
