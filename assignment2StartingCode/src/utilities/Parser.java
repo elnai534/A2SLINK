@@ -5,6 +5,20 @@ import implementations.MyQueue;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+/**
+ * The Parser class reads an XML file and checks for syntax and structural errors.
+ * It identifies invalid or malformed tags and ensures proper nesting.
+ *
+ * <p>Usage:
+ * <pre>{@code
+ * java -jar Parser.jar <XML file path>
+ * }</pre>
+ * </p>
+ *
+ * @author Anthony Yang, Elina Chin, Anjhel Balane, Sumaiya Khurshid, Sila Demirkaya
+ * @version 1.0
+ * @since 2024-11-22
+ */
 public class Parser {
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -19,8 +33,13 @@ public class Parser {
             parseXML(xmlDocument);
         }
     }
-
-    // Reads XML file content without using BufferedReader or FileReader
+    
+    /**
+     * Reads the contents of an XML file into a String.
+     *
+     * @param filePath the path to the XML file to be read
+     * @return the contents of the XML file as a String, or null if an error occurs
+     */
     public static String readXMLFile(String filePath) {
         StringBuilder content = new StringBuilder();
         MyQueue<Character> charQueue = new MyQueue<>();
@@ -34,29 +53,30 @@ public class Parser {
             return null;
         }
 
-        // Convert queued characters to a single string
         while (!charQueue.isEmpty()) {
             content.append(charQueue.dequeue());
         }
 
         return content.toString();
     }
-
+    
+    /**
+     * Parses the given XML document for syntax and structural errors.
+     *
+     * @param xmlDocument the XML content as a String
+     */
     public static void parseXML(String xmlDocument) {
-        MyStack<String> tagStack = new MyStack<>();
+        MyStack<TagInfo> tagStack = new MyStack<>();
         MyArrayList<String> errors = new MyArrayList<>();
         String[] lines = splitByLines(xmlDocument);
-        boolean foundRootTag = false;
 
         for (int lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-            String line = lines[lineNumber];
+            String line = lines[lineNumber].trim();
 
-            // Skip null, empty lines, or processing instructions
-            if (line == null || line.trim().isEmpty() || (line.startsWith("<?") && line.endsWith("?>"))) {
+            if (line.isEmpty()) {
                 continue;
             }
 
-            line = line.trim();
             int index = 0;
 
             while (index < line.length()) {
@@ -65,60 +85,54 @@ public class Parser {
 
                 int openTagEnd = line.indexOf('>', openTagStart);
                 if (openTagEnd == -1) {
-                    errors.add("Malformed tag - missing '>' at line " + (lineNumber + 1));
+
+                    errors.add("Error at line " + (lineNumber + 1) + ": Malformed tag\n" + line.trim());
                     break;
                 }
 
                 String tagContent = line.substring(openTagStart + 1, openTagEnd).trim();
                 index = openTagEnd + 1;
 
-                // Ignore processing instructions and comments
-                if (tagContent.startsWith("?") || tagContent.startsWith("!--")) {
+                if (line.indexOf(">>", openTagStart) != -1) {
+                    errors.add("Invalid close tag at line " + (lineNumber + 1) + "\n" + line.trim());
+                    break;
+                }
+
+                if (tagContent.startsWith("!--") || tagContent.startsWith("?")) {
                     continue;
                 }
 
-                if (tagContent.startsWith("/")) { // Closing tag
+                if (tagContent.startsWith("/")) {
                     String closingTagName = tagContent.substring(1).split(" ")[0];
-
                     if (tagStack.isEmpty()) {
-                        errors.add("Unmatched closing tag </" + closingTagName + "> at line " + (lineNumber + 1));
+                        errors.add("Error at line " + (lineNumber + 1) + ": </" + closingTagName + ">");
                     } else {
-                        String topTag = tagStack.pop();
-
-                        // Check for mismatched tags
-                        if (!topTag.equals(closingTagName)) {
-                            errors.add("Mismatched closing tag </" + closingTagName + "> at line " + (lineNumber + 1)
-                                    + ", expected </" + topTag + ">");
-                            tagStack.push(topTag); // Push back the mismatched tag for further checks
+                        TagInfo topTag = tagStack.pop();
+                        if (!topTag.name.equals(closingTagName)) {
+                            errors.add("Error at line " + (lineNumber + 1) + ": </" + closingTagName + ">");
                         }
                     }
-                } else if (tagContent.endsWith("/")) { // Self-closing tag
                     continue;
-                } else { // Opening tag
-                    String openingTagName = tagContent.split(" ")[0];
-
-                    if (!foundRootTag) {
-                        foundRootTag = true;
-                    }
-
-                    tagStack.push(openingTagName);
                 }
+
+                if (tagContent.endsWith("/")) {
+                    continue;
+                }
+
+                String openingTagName = tagContent.split(" ")[0];
+                tagStack.push(new TagInfo(openingTagName, lineNumber + 1));
             }
         }
 
         while (!tagStack.isEmpty()) {
-            String unclosedTag = tagStack.pop();
-            errors.add("Unclosed tag: <" + unclosedTag + ">");
-        }
-
-        if (!foundRootTag) {
-            errors.add("No root tag found.");
+            TagInfo unclosedTag = tagStack.pop();
+            errors.add("Error at line " + unclosedTag.line + ": <" + unclosedTag.name + ">");
         }
 
         if (errors.isEmpty()) {
             System.out.println("XML is well-formed.");
         } else {
-            System.out.println("Errors found in the XML document:");
+            System.out.println("===========Error Log===========");
             Iterator<String> iterator = errors.iterator();
             while (iterator.hasNext()) {
                 String error = iterator.next();
@@ -126,35 +140,27 @@ public class Parser {
             }
         }
     }
+    
+    /**
+     * A helper class to store tag information for the stack.
+     */
+    static class TagInfo {
+        String name;
+        int line;
 
+        TagInfo(String name, int line) {
+            this.name = name;
+            this.line = line;
+        }
+    }
 
-
+    /**
+     * Splits a document into lines, preserving the original line structure.
+     *
+     * @param document the document to split
+     * @return an array of lines from the document
+     */
     private static String[] splitByLines(String document) {
-        MyArrayList<String> lines = new MyArrayList<>();
-        int lastIndex = 0;
-
-        for (int i = 0; i < document.length(); i++) {
-            if (document.charAt(i) == '\n') {
-                String line = document.substring(lastIndex, i).trim();
-                if (!line.isEmpty()) { // Add only non-empty lines
-                    lines.add(line);
-                }
-                lastIndex = i + 1;
-            }
-        }
-
-        // Add the last line if it's non-empty
-        if (lastIndex < document.length()) {
-            String lastLine = document.substring(lastIndex).trim();
-            if (!lastLine.isEmpty()) {
-                lines.add(lastLine);
-            }
-        }
-
-        String[] lineArray = new String[lines.size()];
-        for (int i = 0; i < lines.size(); i++) {
-            lineArray[i] = lines.get(i);
-        }
-        return lineArray;
+        return document.split("\r\n|\r|\n");
     }
 }
